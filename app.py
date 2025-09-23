@@ -32,5 +32,15 @@ def delete_todo(todo_id):
 def get_todos():
     return jsonify(todos)
 
+@app.route('/edit/<int:todo_id>', methods=['GET', 'POST'])
+def edit_todo(todo_id):
+    todo = next((t for t in todos if t['id'] == todo_id), None)
+    if request.method == 'POST':
+        new_text = request.form.get('text')
+        if todo and new_text:
+            todo['text'] = new_text
+        return redirect('/')
+    return render_template('edit.html', todo=todo)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
