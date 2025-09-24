@@ -117,3 +117,64 @@ def test_edit_todo_post(client):
     response = client.get('/api/todos')
     tasks = response.get_json()
     assert tasks[0]['text'] == 'Updated task'
+
+def test_search_functionality(client):
+    """Тестирование поиска задач"""
+    test_tasks = ['Buy groceries', 'Write report', 'Call mom']
+    for task in test_tasks:
+        client.post('/add', data={'todo': task})
+    
+    # Тест поиска существующей задачи
+    response = client.get('/?search=groceries')
+    assert b'Buy groceries' in response.data
+    assert b'Write report' not in response.data
+    
+    # Тест поиска несуществующей задачи
+    response = client.get('/?search=nonexistent')
+    assert b'No tasks found' in response.data
+
+def test_filter_functionality(client):
+    """Тестирование фильтрации по статусу"""
+    client.post('/add', data={'todo': 'FilterTestTask1'})
+    client.post('/add', data={'todo': 'FilterTestTask2'}) 
+    client.post('/add', data={'todo': 'FilterTestTask3'})
+    
+    response = client.get('/api/todos')
+    tasks = response.get_json()
+    assert len(tasks) == 3
+    
+    response = client.get('/complete/1')
+    assert response.status_code == 302
+
+    response = client.get('/api/todos')
+    tasks = response.get_json()
+
+    task1 = next((task for task in tasks if task['id'] == 1), None)
+    task2 = next((task for task in tasks if task['id'] == 2), None)
+    task3 = next((task for task in tasks if task['id'] == 3), None)
+    
+    assert task1 is not None and task1['done'] == True
+    assert task2 is not None and task2['done'] == False
+    assert task3 is not None and task3['done'] == False
+
+    # Тест 1: Фильтр "Все" - должны видеть все 3 задачи
+    response = client.get('/?filter=all')
+    content = response.data.decode('utf-8')
+    assert 'FilterTestTask1' in content
+    assert 'FilterTestTask2' in content  
+    assert 'FilterTestTask3' in content
+
+    # Тест 2: Фильтр "Активные" - должны видеть только невыполненные задачи
+    response = client.get('/?filter=active')
+    content = response.data.decode('utf-8')
+    
+    assert 'FilterTestTask1' not in content
+    assert 'FilterTestTask2' in content
+    assert 'FilterTestTask3' in content
+
+    # Тест 3: Фильтр "Выполненные" - должны видеть только выполненные задачи
+    response = client.get('/?filter=completed')
+    content = response.data.decode('utf-8')
+    assert 'FilterTestTask1' in content
+    assert 'FilterTestTask2' not in content
+    assert 'FilterTestTask3' not in content
