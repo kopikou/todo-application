@@ -2,24 +2,88 @@
 <html>
 <head>
     <title>To-Do List</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .search-section { margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        .filter-buttons { margin: 10px 0; }
+        .filter-buttons a { 
+            margin-right: 10px; 
+            padding: 5px 10px; 
+            text-decoration: none; 
+            border: 1px solid #ddd; 
+            border-radius: 3px;
+            color: #333;
+        }
+        .filter-buttons a.active { 
+            background: #007bff; 
+            color: white; 
+            border-color: #007bff;
+        }
+        .stats { margin: 10px 0; color: #666; font-size: 14px; }
+        .todo-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .todo-item.completed { opacity: 0.6; }
+        .search-form { display: flex; gap: 10px; margin-bottom: 10px; }
+        .search-form input { flex: 1; padding: 8px; }
+        .no-tasks { color: #999; text-align: center; padding: 20px; }
+    </style>
 </head>
 <body>
     <h1>To-Do List</h1>
+    
+    <!-- Форма поиска -->
+    <div class="search-section">
+        <form class="search-form" action="/" method="get">
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Search tasks...">
+            <button type="submit">Search</button>
+            {% if search_query %}
+                <a href="/clear_search">Clear</a>
+            {% endif %}
+        </form>
+        
+        <!-- Фильтры по статусу -->
+        <div class="filter-buttons">
+            <a href="/?filter=all{% if search_query %}&search={{ search_query }}{% endif %}" 
+               class="{% if filter_status == 'all' %}active{% endif %}">All ({{ all_todos|length }})</a>
+            <a href="/?filter=active{% if search_query %}&search={{ search_query }}{% endif %}" 
+               class="{% if filter_status == 'active' %}active{% endif %}">Active ({{ all_todos|selectattr('done', 'false')|list|length }})</a>
+            <a href="/?filter=completed{% if search_query %}&search={{ search_query }}{% endif %}" 
+               class="{% if filter_status == 'completed' %}active{% endif %}">Completed ({{ all_todos|selectattr('done', 'true')|list|length }})</a>
+        </div>
+        
+        <!-- Статистика -->
+        <div class="stats">
+            Showing {{ todos|length }} of {{ all_todos|length }} tasks
+            {% if search_query %} matching "{{ search_query }}"{% endif %}
+        </div>
+    </div>
+    
+    <!-- Форма добавления новой задачи -->
     <form action="/add" method="post">
         <input type="text" name="todo" placeholder="Add new task" required>
         <button type="submit">Add</button>
     </form>
-    <ul>
+    
+    <!-- Список задач -->
+    <ul style="list-style: none; padding: 0;">
         {% for todo in todos %}
-            <li>
-                <span style="{% if todo.done %}text-decoration: line-through{% endif %}">
+            <li class="todo-item {% if todo.done %}completed{% endif %}">
+                <span style="{% if todo.done %}text-decoration: line-through; color: #999{% endif %}">
                     {{ todo.text }}
                 </span>
-                <a href="/complete/{{ todo.id }}">
-                    {% if todo.done %}Undo{% else %}Complete{% endif %}
-                </a>
-                <a href="/delete/{{ todo.id }}" style="color: red; margin-left: 10px;">Delete</a>
-                <a href="/edit/{{ todo.id }}" style="color: green; margin-left: 10px;">Edit</a>
+                <div style="float: right;">
+                    <a href="/complete/{{ todo.id }}?search={{ search_query }}&filter={{ filter_status }}">
+                        {% if todo.done %}Undo{% else %}Complete{% endif %}
+                    </a>
+                    <a href="/delete/{{ todo.id }}?search={{ search_query }}&filter={{ filter_status }}" 
+                       style="color: red; margin-left: 10px;">Delete</a>
+                    <a href="/edit/{{ todo.id }}?search={{ search_query }}&filter={{ filter_status }}" 
+                       style="color: green; margin-left: 10px;">Edit</a>
+                </div>
+                <div style="clear: both;"></div>
+            </li>
+        {% else %}
+            <li class="no-tasks">
+                {% if search_query %}No tasks found matching "{{ search_query }}"{% else %}No tasks yet{% endif %}
             </li>
         {% endfor %}
     </ul>
